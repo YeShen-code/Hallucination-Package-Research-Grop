@@ -10,10 +10,8 @@ on:
 jobs:
   sync_data:
     runs-on: ubuntu-latest
-    # >>> 添加这一行和下面的子项
     permissions:
       contents: write # 明确授予对仓库内容的写入权限
-    # <<<
 
     steps:
     - name: Checkout repository
@@ -29,11 +27,20 @@ jobs:
         
         mkdir -p data # 确保目录存在
         
-        curl -L "$GOOGLE_SHEET_CSV_URL" -o "$CSV_FILE_PATH"
+        # >>> 修改这一行: 添加 -A "User-Agent"
+        curl -L -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" "$GOOGLE_SHEET_CSV_URL" -o "$CSV_FILE_PATH"
+        # <<<
 
         # 检查是否成功下载
         if [ ! -f "$CSV_FILE_PATH" ]; then
           echo "Error: CSV file was not downloaded."
+          exit 1
+        fi
+        # 验证下载的文件内容是否是有效的CSV，而不是错误页面
+        # 简单检查文件开头是否包含HTML标签
+        if head -n 1 "$CSV_FILE_PATH" | grep -q "<!DOCTYPE html>"; then
+          echo "Error: Downloaded file is HTML (likely an error page), not CSV."
+          cat "$CSV_FILE_PATH" # 打印文件内容以便调试
           exit 1
         fi
         echo "CSV downloaded to $CSV_FILE_PATH"
@@ -46,7 +53,6 @@ jobs:
     - name: Commit and push if changes exist
       run: |
         git add .
-        # 检查是否有实际的更改，避免空提交
         if ! git diff-index --quiet HEAD; then
           git commit -m "Update data from Google Sheet [skip ci]"
           git push
@@ -54,15 +60,4 @@ jobs:
           echo "No changes in CSV file. Skipping commit."
         fi
       env:
-        # 使用内置的 GITHUB_TOKEN，因为我们已经在 permissions 中授予了它写入权限
-        # 如果你仍然想使用自己创建的 GH_TOKEN，也可以继续保留这一行，但请确保它的权限是正确的
-        # 推荐先尝试使用内置 token + permissions 解决。
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
-        # 注意：这里是 secrets.GITHUB_TOKEN，这是 GitHub 提供的内置秘钥，不是你自定义的 GH_TOKEN
-        # 如果你之前使用的是 secrets.GH_TOKEN 并且确定它是你手动创建的 Personal Access Token，
-        # 那么你可以尝试将 env 这一行删除，让 git push 默认使用内置的 GITHUB_TOKEN，
-        # 并依赖上面添加的 permissions 配置来授予权限。
-        # 最稳妥的方法是：
-        # 1. 移除 env: GITHUB_TOKEN: ${{ secrets.GH_TOKEN }} 这一行
-        # 2. 确保在 jobs.sync_data 下添加了 permissions: contents: write
-        # 这样 git push 会使用内置的 GITHUB_TOKEN，并且它现在拥有了写入权限。
