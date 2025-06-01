@@ -1,0 +1,64 @@
+name: Sync Google Sheet CSV via API
+
+on:
+  schedule:
+    - cron: '0 * * * *' # 每小时运行
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  sync_data:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 授予写入仓库内容的权限
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x' # 使用 Python 3.x 的最新稳定版
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install gspread pandas openpyxl # openpyxl 是 pandas 写 Excel 依赖，gspread 可能需要
+
+    - name: Fetch Google Sheet CSV using Python script
+      env:
+        GOOGLE_SHEETS_API_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_API_CREDENTIALS }}
+        # 从你的 Google Sheet URL 中提取 ID:
+        # https://docs.google.com/spreadsheets/d/THIS_IS_THE_ID/edit#gid=0
+        # 例如，你的链接是: https://docs.google.com/spreadsheets/d/e/2PACX-1vQJ__EJVsqIpDJbdyKPh8nwpyd0GUdwm-Ivdl4rsD_-k9oruRccECXHwigtJOrOaIt8LtcNwEP3OxUY/pub?gid=0&single=true&output=csv
+        # 这个链接是发布链接，你需要原始的编辑链接的 ID。
+        # 假设你的原始表格 ID 是 '1vQJ__EJVsqIpDJbdyKPh8nwpyd0GUdwm-Ivdl4rsD_-k9oruRccECXHwigtJOrOaIt8LtcNwEP3OxUY' (这只是个例子，你需要替换成你自己的)
+        # 如果你的 URL 是 https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID/edit
+        # 那么 YOUR_SPREADSHEET_ID 就是你要填的
+        GOOGLE_SHEET_ID: "e/2PACX-1vQJ__EJVsqIpDJbdyKPh8nwpyd0GUdwm-Ivdl4rsD_-k9oruRccECXHwigtJOrOaIt8LtcNwEP3OxUY" # <--- 替换成你的 Spreadsheet ID
+        # 如果你的工作表名称不是 "Sheet1"，请修改这里
+        GOOGLE_SHEET_NAME: "Sheet1" # <--- 替换成你的工作表名称 (例如 gid=0 对应的工作表)
+        OUTPUT_CSV_PATH: "data/your_data.csv" # <--- 定义CSV保存路径
+      run: python fetch_sheet_data.py
+
+    - name: Configure Git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Commit and push if changes exist
+      run: |
+        # 确保目标文件存在，否则 git add 会报错
+        if [ ! -f "data/your_data.csv" ]; then
+          echo "Error: data/your_data.csv was not created by the Python script."
+          exit 1
+        fi
+        git add data/your_data.csv # 只添加目标CSV文件
+        if ! git diff-index --quiet HEAD; then
+          git commit -m "Update data from Google Sheet (API) [skip ci]"
+          git push
+        else
+          echo "No changes in CSV file. Skipping commit."
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
