@@ -35,7 +35,7 @@ jobs:
         # 假设你的原始表格 ID 是 '1vQJ__EJVsqIpDJbdyKPh8nwpyd0GUdwm-Ivdl4rsD_-k9oruRccECXHwigtJOrOaIt8LtcNwEP3OxUY' (这只是个例子，你需要替换成你自己的)
         # 如果你的 URL 是 https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID/edit
         # 那么 YOUR_SPREADSHEET_ID 就是你要填的
-        GOOGLE_SHEET_ID: "e/2PACX-1vQJ__EJVsqIpDJbdyKPh8nwpyd0GUdwm-Ivdl4rsD_-k9oruRccECXHwigtJOrOaIt8LtcNwEP3OxUY" # <--- 替换成你的 Spreadsheet ID
+        GOOGLE_SHEET_ID: "18_qWTqGmvKum2P2l3UZy9lA9zxqMhJA5dT2Drq-e9hc" # <--- 替换成你的 Spreadsheet ID
         # 如果你的工作表名称不是 "Sheet1"，请修改这里
         GOOGLE_SHEET_NAME: "Sheet1" # <--- 替换成你的工作表名称 (例如 gid=0 对应的工作表)
         OUTPUT_CSV_PATH: "data/your_data.csv" # <--- 定义CSV保存路径
