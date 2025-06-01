@@ -3,11 +3,6 @@ name: Sync Google Sheet CSV
 on:
   schedule:
     # Runs every 1 hour (你可以根据需要调整频率)
-    # Cron 语法：MINUTE HOUR DAY_OF_MONTH MONTH DAY_OF_WEEK
-    # 例如：
-    # '0 * * * *'  - 每小时的0分
-    # '0 0 * * *'  - 每天午夜
-    # '0 0 * * 1'  - 每周一午夜
     - cron: '0 * * * *'
   workflow_dispatch:
     # 允许手动触发此工作流
@@ -15,10 +10,14 @@ on:
 jobs:
   sync_data:
     runs-on: ubuntu-latest
+    # >>> 添加这一行和下面的子项
+    permissions:
+      contents: write # 明确授予对仓库内容的写入权限
+    # <<<
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4 # 使用v4版本
+      uses: actions/checkout@v4
 
     - name: Fetch Google Sheet CSV
       id: fetch_csv
@@ -38,7 +37,7 @@ jobs:
           exit 1
         fi
         echo "CSV downloaded to $CSV_FILE_PATH"
-        
+
     - name: Configure Git
       run: |
         git config user.name "github-actions[bot]"
@@ -55,5 +54,15 @@ jobs:
           echo "No changes in CSV file. Skipping commit."
         fi
       env:
-        # 使用你之前设置的秘钥来认证
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }} # 确保这里的名称与你设置的秘钥名称一致
+        # 使用内置的 GITHUB_TOKEN，因为我们已经在 permissions 中授予了它写入权限
+        # 如果你仍然想使用自己创建的 GH_TOKEN，也可以继续保留这一行，但请确保它的权限是正确的
+        # 推荐先尝试使用内置 token + permissions 解决。
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+        # 注意：这里是 secrets.GITHUB_TOKEN，这是 GitHub 提供的内置秘钥，不是你自定义的 GH_TOKEN
+        # 如果你之前使用的是 secrets.GH_TOKEN 并且确定它是你手动创建的 Personal Access Token，
+        # 那么你可以尝试将 env 这一行删除，让 git push 默认使用内置的 GITHUB_TOKEN，
+        # 并依赖上面添加的 permissions 配置来授予权限。
+        # 最稳妥的方法是：
+        # 1. 移除 env: GITHUB_TOKEN: ${{ secrets.GH_TOKEN }} 这一行
+        # 2. 确保在 jobs.sync_data 下添加了 permissions: contents: write
+        # 这样 git push 会使用内置的 GITHUB_TOKEN，并且它现在拥有了写入权限。
